@@ -4050,8 +4050,7 @@ void plm_audio_decode_frame(plm_audio_t *self) {
 					#else
 						for (int j = 0; j < 32; j++) {
 							self->samples.interleaved[((out_pos + j) << 1) + ch] = 
-								// self->U[j] / 2147418112.0f;
-								self->U[j];
+								self->U[j] / 2147418112.0f;
 						}
 					#endif
 				} // End of synthesis channel loop

@@ -61,8 +61,8 @@ static void i2s_play_float(float *sample, uint16_t len)
     uint8_t *p = aBuf;
     while (i--)
     {
-        // iSample.v16 = (uint16_t)(*sample++ * (32767.0f * GAIN_LEVEL)) + 32768;
-        iSample.v16 = (uint16_t)(*sample++ * (32767.0f / 2147418112.0f * GAIN_LEVEL)) + 32768;
+        iSample.v16 = (uint16_t)(*sample++ * (32767.0f * GAIN_LEVEL)) + 32768;
+        // iSample.v16 = (uint16_t)(*sample++ * (32767.0f / 2147418112.0f * GAIN_LEVEL)) + 32768;
         *p++ = iSample.v8[1];
         *p++ = iSample.v8[0];
     }

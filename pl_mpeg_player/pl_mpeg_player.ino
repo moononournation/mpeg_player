@@ -122,12 +122,13 @@ void setup(void)
     plm_set_video_decode_callback(plm, my_video_callback, NULL);
     plm_set_audio_decode_callback(plm, my_audio_callback, NULL);
 
+    // plm_video_set_no_delay(plm->video_decoder, true);
     // plm_set_video_enabled(plm, false);
     // plm_set_audio_enabled(plm, false);
 
     plm_w = plm_get_width(plm);
     plm_h = plm_get_height(plm);
-    plm_buffer = (uint16_t *)heap_caps_malloc(plm_w * plm_h * 2, MALLOC_CAP_DMA);
+    plm_buffer = (uint16_t *)malloc(plm_w * plm_h * 2);
   }
 }
 
