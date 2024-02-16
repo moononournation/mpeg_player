@@ -53,7 +53,7 @@ int decode_audio_count = 0;
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
   // Do something with frame->y.data, frame->cr.data, frame->cb.data
-  plm_frame_to_rgb565(frame, plm_buffer);
+  YCbCr2RGB565Be(frame->y.data, frame->cb.data, frame->cr.data, frame->width, frame->height, plm_buffer);
   gfx->draw16bitBeRGBBitmap(0, 0, plm_buffer, plm_w, plm_h);
   ++decode_video_count;
 }
@@ -64,45 +64,6 @@ void my_audio_callback(plm_t *plm, plm_samples_t *frame, void *user)
   // Do something with samples->interleaved
   i2s_play_float(frame->interleaved, frame->count);
   ++decode_audio_count;
-}
-
-#define PLM_PUT_RGB565(Y_OFFSET)                \
-  y = Y2I16[frame->y.data[y_index + Y_OFFSET]]; \
-  dest[y_index + Y_OFFSET] = CLIPR[y + r] | CLIPG[y + g] | CLIPB[y + b];
-
-void plm_frame_to_rgb565(plm_frame_t *frame, uint16_t *dest)
-{
-  int cols = frame->width >> 1;
-  int rows = frame->height >> 1;
-  int yw = frame->y.width;
-  int cw = frame->cb.width;
-  int c_index = 0;
-  int y_index = 0;
-  for (int row = 0; row < rows; ++row)
-  {
-    for (int col = 0; col < cols; ++col)
-    {
-      uint8_t cr = frame->cr.data[c_index];
-      uint8_t cb = frame->cb.data[c_index];
-      int16_t r = CR2R16[cr];
-      int16_t g = - CB2G16[cb] - CR2G16[cr];
-      int16_t b = CB2B16[cb];
-      int16_t y;
-
-      y = Y2I16[frame->y.data[y_index]];
-      dest[y_index] = CLIPR[y + r] | CLIPG[y + g] | CLIPB[y + b];
-      y = Y2I16[frame->y.data[y_index + 1]];
-      dest[y_index + 1] = CLIPR[y + r] | CLIPG[y + g] | CLIPB[y + b];
-      y = Y2I16[frame->y.data[y_index + yw]];
-      dest[y_index + yw] = CLIPR[y + r] | CLIPG[y + g] | CLIPB[y + b];
-      y = Y2I16[frame->y.data[y_index + yw + 1]];
-      dest[y_index + yw + 1] = CLIPR[y + r] | CLIPG[y + g] | CLIPB[y + b];
-
-      c_index += 1;
-      y_index += 2;
-    }
-    y_index += yw;
-  }
 }
 
 void setup(void)
