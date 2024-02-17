@@ -135,13 +135,12 @@ void setup(void)
 void loop()
 {
   unsigned long start_ms = millis();
-  unsigned long next_frame_ms = start_ms + 40;
+  unsigned long next_frame_ms = start_ms;
   unsigned long cur_ms;
   unsigned long remain_ms = 0;
   unsigned long total_remain_ms = 0;
   do
   {
-    plm_decode(plm, 0.04);
     cur_ms = millis();
     if (next_frame_ms > cur_ms)
     {
@@ -153,6 +152,9 @@ void loop()
     {
       // Serial.printf("Excess: %lu\n", cur_ms - next_frame_ms);
     }
+
+    plm_decode(plm, 0.04);
+
     next_frame_ms += 40;
   } while (!plm_has_ended(plm));
 
