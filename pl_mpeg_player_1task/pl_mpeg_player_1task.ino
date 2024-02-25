@@ -43,6 +43,7 @@ Arduino_GFX *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotat
 
 #define PL_MPEG_IMPLEMENTATION
 #include "pl_mpeg.h"
+#include "plm_audio.h"
 #include "YCbCr2RGB.h"
 plm_t *plm;
 plm_frame_t *frame = NULL;
