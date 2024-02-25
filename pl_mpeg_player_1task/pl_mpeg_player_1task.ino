@@ -198,7 +198,7 @@ void loop()
     next_frame_ms += 40;
   } while (!plm_has_ended(plm));
 
-  Serial.printf("Time used: %lu, decode_video: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
+  Serial.printf("Time used: %lu, decode_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
 
   vQueueDelete(video_queue_handle);
 
