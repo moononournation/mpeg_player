@@ -67,7 +67,7 @@ plm_t *plm_create_with_memory(uint8_t *bytes, size_t length, int free_when_done)
 
 plm_t *plm_create_with_buffer(plm_buffer_t *buffer, int destroy_when_done)
 {
-	plm_t *self = (plm_t *)malloc(sizeof(plm_t));
+	plm_t *self = (plm_t *)PLM_MALLOC(sizeof(plm_t));
 	memset(self, 0, sizeof(plm_t));
 
 	self->demux = plm_demux_create(buffer, destroy_when_done);
@@ -96,8 +96,12 @@ int plm_init_decoders(plm_t *self)
 		{
 			self->video_packet_type = PLM_DEMUX_PACKET_VIDEO_1;
 		}
-		self->video_buffer = plm_buffer_create_with_capacity(PLM_BUFFER_DEFAULT_SIZE);
-		plm_buffer_set_load_callback(self->video_buffer, plm_read_video_packet, self);
+		if (!self->video_decoder)
+		{
+			self->video_buffer = plm_buffer_create_with_capacity(PLM_BUFFER_DEFAULT_SIZE);
+			plm_buffer_set_load_callback(self->video_buffer, plm_read_video_packet, self);
+			self->video_decoder = plm_video_create_with_buffer(self->video_buffer, TRUE);
+		}
 	}
 
 	if (plm_demux_get_num_audio_streams(self->demux) > 0)
@@ -106,18 +110,12 @@ int plm_init_decoders(plm_t *self)
 		{
 			self->audio_packet_type = PLM_DEMUX_PACKET_AUDIO_1 + self->audio_stream_index;
 		}
-		self->audio_buffer = plm_buffer_create_with_capacity(PLM_BUFFER_DEFAULT_SIZE);
-		plm_buffer_set_load_callback(self->audio_buffer, plm_read_audio_packet, self);
-	}
-
-	if (self->video_buffer)
-	{
-		self->video_decoder = plm_video_create_with_buffer(self->video_buffer, TRUE);
-	}
-
-	if (self->audio_buffer)
-	{
-		self->audio_decoder = plm_audio_create_with_buffer(self->audio_buffer, TRUE);
+		if (!self->audio_decoder)
+		{
+			self->audio_buffer = plm_buffer_create_with_capacity(PLM_BUFFER_DEFAULT_SIZE);
+			plm_buffer_set_load_callback(self->audio_buffer, plm_read_audio_packet, self);
+			self->audio_decoder = plm_audio_create_with_buffer(self->audio_buffer, TRUE);
+		}
 	}
 
 	self->has_decoders = TRUE;
@@ -136,7 +134,7 @@ void plm_destroy(plm_t *self)
 	}
 
 	plm_demux_destroy(self->demux);
-	free(self);
+	PLM_FREE(self);
 }
 
 int plm_get_audio_enabled(plm_t *self)
@@ -164,6 +162,21 @@ int plm_has_headers(plm_t *self)
 	}
 
 	return TRUE;
+}
+
+int plm_probe(plm_t *self, size_t probesize)
+{
+	int found_streams = plm_demux_probe(self->demux, probesize);
+	if (!found_streams)
+	{
+		return FALSE;
+	}
+
+	// Re-init decoders
+	self->has_decoders = FALSE;
+	self->video_packet_type = 0;
+	self->audio_packet_type = 0;
+	return plm_init_decoders(self);
 }
 
 void plm_set_audio_enabled(plm_t *self, int enabled)
@@ -633,7 +646,7 @@ plm_buffer_t *plm_buffer_create_with_file(FILE *fh, int close_when_done)
 
 plm_buffer_t *plm_buffer_create_with_memory(uint8_t *bytes, size_t length, int free_when_done)
 {
-	plm_buffer_t *self = (plm_buffer_t *)malloc(sizeof(plm_buffer_t));
+	plm_buffer_t *self = (plm_buffer_t *)PLM_MALLOC(sizeof(plm_buffer_t));
 	memset(self, 0, sizeof(plm_buffer_t));
 	self->capacity = length;
 	self->length = length;
@@ -647,11 +660,11 @@ plm_buffer_t *plm_buffer_create_with_memory(uint8_t *bytes, size_t length, int f
 
 plm_buffer_t *plm_buffer_create_with_capacity(size_t capacity)
 {
-	plm_buffer_t *self = (plm_buffer_t *)malloc(sizeof(plm_buffer_t));
+	plm_buffer_t *self = (plm_buffer_t *)PLM_MALLOC(sizeof(plm_buffer_t));
 	memset(self, 0, sizeof(plm_buffer_t));
 	self->capacity = capacity;
 	self->free_when_done = TRUE;
-	self->bytes = (uint8_t *)malloc(capacity);
+	self->bytes = (uint8_t *)PLM_MALLOC(capacity);
 	self->mode = PLM_BUFFER_MODE_RING;
 	self->discard_read_bytes = TRUE;
 	return self;
@@ -673,9 +686,9 @@ void plm_buffer_destroy(plm_buffer_t *self)
 	}
 	if (self->free_when_done)
 	{
-		free(self->bytes);
+		PLM_FREE(self->bytes);
 	}
-	free(self);
+	PLM_FREE(self);
 }
 
 size_t plm_buffer_get_size(plm_buffer_t *self)
@@ -719,7 +732,7 @@ size_t plm_buffer_write(plm_buffer_t *self, uint8_t *bytes, size_t length)
 		{
 			new_size *= 2;
 		} while (new_size - self->length < length);
-		self->bytes = (uint8_t *)realloc(self->bytes, new_size);
+		self->bytes = (uint8_t *)PLM_REALLOC(self->bytes, new_size);
 		self->capacity = new_size;
 	}
 
@@ -1004,7 +1017,7 @@ plm_packet_t *plm_demux_get_packet(plm_demux_t *self);
 
 plm_demux_t *plm_demux_create(plm_buffer_t *buffer, int destroy_when_done)
 {
-	plm_demux_t *self = (plm_demux_t *)malloc(sizeof(plm_demux_t));
+	plm_demux_t *self = (plm_demux_t *)PLM_MALLOC(sizeof(plm_demux_t));
 	memset(self, 0, sizeof(plm_demux_t));
 
 	self->buffer = buffer;
@@ -1024,7 +1037,7 @@ void plm_demux_destroy(plm_demux_t *self)
 	{
 		plm_buffer_destroy(self->buffer);
 	}
-	free(self);
+	PLM_FREE(self);
 }
 
 int plm_demux_has_headers(plm_demux_t *self)
@@ -1092,6 +1105,43 @@ int plm_demux_has_headers(plm_demux_t *self)
 
 	self->has_headers = TRUE;
 	return TRUE;
+}
+
+int plm_demux_probe(plm_demux_t *self, size_t probesize)
+{
+	int previous_pos = plm_buffer_tell(self->buffer);
+
+	int video_stream = FALSE;
+	int audio_streams[4] = {FALSE, FALSE, FALSE, FALSE};
+	do
+	{
+		self->start_code = plm_buffer_next_start_code(self->buffer);
+		if (self->start_code == PLM_DEMUX_PACKET_VIDEO_1)
+		{
+			video_stream = TRUE;
+		}
+		else if (
+				self->start_code >= PLM_DEMUX_PACKET_AUDIO_1 &&
+				self->start_code <= PLM_DEMUX_PACKET_AUDIO_4)
+		{
+			audio_streams[self->start_code - PLM_DEMUX_PACKET_AUDIO_1] = TRUE;
+		}
+	} while (
+			self->start_code != -1 &&
+			plm_buffer_tell(self->buffer) - previous_pos < probesize);
+
+	self->num_video_streams = video_stream ? 1 : 0;
+	self->num_audio_streams = 0;
+	for (int i = 0; i < 4; i++)
+	{
+		if (audio_streams[i])
+		{
+			self->num_audio_streams++;
+		}
+	}
+
+	plm_demux_buffer_seek(self, previous_pos);
+	return (self->num_video_streams || self->num_audio_streams);
 }
 
 int plm_demux_get_num_video_streams(plm_demux_t *self)
@@ -2255,7 +2305,7 @@ void plm_video_idct(int *block);
 
 plm_video_t *plm_video_create_with_buffer(plm_buffer_t *buffer, int destroy_when_done)
 {
-	plm_video_t *self = (plm_video_t *)malloc(sizeof(plm_video_t));
+	plm_video_t *self = (plm_video_t *)PLM_MALLOC(sizeof(plm_video_t));
 	memset(self, 0, sizeof(plm_video_t));
 
 	self->buffer = buffer;
@@ -2279,10 +2329,10 @@ void plm_video_destroy(plm_video_t *self)
 
 	if (self->has_sequence_header)
 	{
-		free(self->frames_data);
+		PLM_FREE(self->frames_data);
 	}
 
-	free(self);
+	PLM_FREE(self);
 }
 
 double plm_video_get_framerate(plm_video_t *self)
@@ -2499,7 +2549,7 @@ int plm_video_decode_sequence_header(plm_video_t *self)
 	size_t chroma_plane_size = self->chroma_width * self->chroma_height;
 	size_t frame_data_size = (luma_plane_size + 2 * chroma_plane_size);
 
-	self->frames_data = (uint8_t *)malloc(frame_data_size * 3);
+	self->frames_data = (uint8_t *)PLM_MALLOC(frame_data_size * 3);
 	plm_video_init_frame(self, &self->frame_current, self->frames_data + frame_data_size * 0);
 	plm_video_init_frame(self, &self->frame_forward, self->frames_data + frame_data_size * 1);
 	plm_video_init_frame(self, &self->frame_backward, self->frames_data + frame_data_size * 2);
@@ -3176,53 +3226,3 @@ void plm_video_idct(int *block)
 		block[7 + i] = (y4 - b7 + 128) >> 8;
 	}
 }
-
-// YCbCr conversion following the BT.601 standard:
-// https://infogalactic.com/info/YCbCr#ITU-R_BT.601_conversion
-
-#define PLM_PUT_PIXEL(RI, GI, BI, Y_OFFSET, DEST_OFFSET)        \
-	y = ((frame->y.data[y_index + Y_OFFSET] - 16) * 76309) >> 16; \
-	dest[d_index + DEST_OFFSET + RI] = plm_clamp(y + r);          \
-	dest[d_index + DEST_OFFSET + GI] = plm_clamp(y - g);          \
-	dest[d_index + DEST_OFFSET + BI] = plm_clamp(y + b);
-
-#define PLM_DEFINE_FRAME_CONVERT_FUNCTION(NAME, BYTES_PER_PIXEL, RI, GI, BI) \
-	void NAME(plm_frame_t *frame, uint8_t *dest, int stride)                   \
-	{                                                                          \
-		int cols = frame->width >> 1;                                            \
-		int rows = frame->height >> 1;                                           \
-		int yw = frame->y.width;                                                 \
-		int cw = frame->cb.width;                                                \
-		for (int row = 0; row < rows; row++)                                     \
-		{                                                                        \
-			int c_index = row * cw;                                                \
-			int y_index = row * 2 * yw;                                            \
-			int d_index = row * 2 * stride;                                        \
-			for (int col = 0; col < cols; col++)                                   \
-			{                                                                      \
-				int y;                                                               \
-				int cr = frame->cr.data[c_index] - 128;                              \
-				int cb = frame->cb.data[c_index] - 128;                              \
-				int r = (cr * 104597) >> 16;                                         \
-				int g = (cb * 25674 + cr * 53278) >> 16;                             \
-				int b = (cb * 132201) >> 16;                                         \
-				PLM_PUT_PIXEL(RI, GI, BI, 0, 0);                                     \
-				PLM_PUT_PIXEL(RI, GI, BI, 1, BYTES_PER_PIXEL);                       \
-				PLM_PUT_PIXEL(RI, GI, BI, yw, stride);                               \
-				PLM_PUT_PIXEL(RI, GI, BI, yw + 1, stride + BYTES_PER_PIXEL);         \
-				c_index += 1;                                                        \
-				y_index += 2;                                                        \
-				d_index += 2 * BYTES_PER_PIXEL;                                      \
-			}                                                                      \
-		}                                                                        \
-	}
-
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_rgb, 3, 0, 1, 2)
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_bgr, 3, 2, 1, 0)
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_rgba, 4, 0, 1, 2)
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_bgra, 4, 2, 1, 0)
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_argb, 4, 1, 2, 3)
-PLM_DEFINE_FRAME_CONVERT_FUNCTION(plm_frame_to_abgr, 4, 3, 2, 1)
-
-#undef PLM_PUT_PIXEL
-#undef PLM_DEFINE_FRAME_CONVERT_FUNCTION
