@@ -521,12 +521,12 @@ extern "C"
 
 	// Various Packet Types
 
-	static const int PLM_DEMUX_PACKET_PRIVATE = 0xBD;
-	static const int PLM_DEMUX_PACKET_AUDIO_1 = 0xC0;
-	static const int PLM_DEMUX_PACKET_AUDIO_2 = 0xC1;
-	static const int PLM_DEMUX_PACKET_AUDIO_3 = 0xC2;
-	static const int PLM_DEMUX_PACKET_AUDIO_4 = 0xC2;
-	static const int PLM_DEMUX_PACKET_VIDEO_1 = 0xE0;
+	#define PLM_DEMUX_PACKET_PRIVATE 0xBD
+	#define PLM_DEMUX_PACKET_AUDIO_1 0xC0
+	#define PLM_DEMUX_PACKET_AUDIO_2 0xC1
+	#define PLM_DEMUX_PACKET_AUDIO_3 0xC2
+	#define PLM_DEMUX_PACKET_AUDIO_4 0xC2
+	#define PLM_DEMUX_PACKET_VIDEO_1 0xE0
 
 	// Create a demuxer with a plm_buffer as source. This will also attempt to read
 	// the pack and system headers from the buffer.

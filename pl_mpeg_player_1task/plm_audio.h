@@ -6,20 +6,20 @@
 // Based on kjmp2 by Martin J. Fiedler
 // http://keyj.emphy.de/kjmp2/
 
-static const int PLM_AUDIO_FRAME_SYNC = 0x7ff;
+#define PLM_AUDIO_FRAME_SYNC 0x7ff
 
-static const int PLM_AUDIO_MPEG_2_5 = 0x0;
-static const int PLM_AUDIO_MPEG_2 = 0x2;
-static const int PLM_AUDIO_MPEG_1 = 0x3;
+#define PLM_AUDIO_MPEG_2_5 0x0
+#define PLM_AUDIO_MPEG_2 0x2
+#define PLM_AUDIO_MPEG_1 0x3
 
-static const int PLM_AUDIO_LAYER_III = 0x1;
-static const int PLM_AUDIO_LAYER_II = 0x2;
-static const int PLM_AUDIO_LAYER_I = 0x3;
+#define PLM_AUDIO_LAYER_III 0x1
+#define PLM_AUDIO_LAYER_II 0x2
+#define PLM_AUDIO_LAYER_I 0x3
 
-static const int PLM_AUDIO_MODE_STEREO = 0x0;
-static const int PLM_AUDIO_MODE_JOINT_STEREO = 0x1;
-static const int PLM_AUDIO_MODE_DUAL_CHANNEL = 0x2;
-static const int PLM_AUDIO_MODE_MONO = 0x3;
+#define PLM_AUDIO_MODE_STEREO 0x0
+#define PLM_AUDIO_MODE_JOINT_STEREO 0x1
+#define PLM_AUDIO_MODE_DUAL_CHANNEL 0x2
+#define PLM_AUDIO_MODE_MONO 0x3
 
 static const unsigned short PLM_AUDIO_SAMPLE_RATE[] = {
 		44100, 48000, 32000, 0, // MPEG-1

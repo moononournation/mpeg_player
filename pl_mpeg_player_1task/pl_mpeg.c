@@ -984,9 +984,9 @@ uint16_t plm_buffer_read_vlc_uint(plm_buffer_t *self, const plm_vlc_uint_t *tabl
 // ----------------------------------------------------------------------------
 // plm_demux implementation
 
-static const int PLM_START_PACK = 0xBA;
-static const int PLM_START_END = 0xB9;
-static const int PLM_START_SYSTEM = 0xBB;
+#define PLM_START_PACK 0xBA
+#define PLM_START_END 0xB9
+#define PLM_START_SYSTEM 0xBB
 
 struct plm_demux_t
 {
@@ -1546,16 +1546,16 @@ plm_packet_t *plm_demux_get_packet(plm_demux_t *self)
 // Inspired by Java MPEG-1 Video Decoder and Player by Zoltan Korandi
 // https://sourceforge.net/projects/javampeg1video/
 
-static const int PLM_VIDEO_PICTURE_TYPE_INTRA = 1;
-static const int PLM_VIDEO_PICTURE_TYPE_PREDICTIVE = 2;
-static const int PLM_VIDEO_PICTURE_TYPE_B = 3;
+#define PLM_VIDEO_PICTURE_TYPE_INTRA 1
+#define PLM_VIDEO_PICTURE_TYPE_PREDICTIVE 2
+#define PLM_VIDEO_PICTURE_TYPE_B 3
 
-static const int PLM_START_SEQUENCE = 0xB3;
-static const int PLM_START_SLICE_FIRST = 0x01;
-static const int PLM_START_SLICE_LAST = 0xAF;
-static const int PLM_START_PICTURE = 0x00;
-static const int PLM_START_EXTENSION = 0xB5;
-static const int PLM_START_USER_DATA = 0xB2;
+#define PLM_START_SEQUENCE 0xB3
+#define PLM_START_SLICE_FIRST 0x01
+#define PLM_START_SLICE_LAST 0xAF
+#define PLM_START_PICTURE 0x00
+#define PLM_START_EXTENSION 0xB5
+#define PLM_START_USER_DATA 0xB2
 
 #define PLM_START_IS_SLICE(c) \
 	(c >= PLM_START_SLICE_FIRST && c <= PLM_START_SLICE_LAST)

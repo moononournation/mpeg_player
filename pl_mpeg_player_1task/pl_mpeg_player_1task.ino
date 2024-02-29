@@ -29,8 +29,8 @@ const char *mpeg_file = "/root/output.mpg";
     delay(500);                             \
   }
 #define GFX_BL TDECK_TFT_BACKLIGHT
-Arduino_DataBus *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, -1);
-Arduino_GFX *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, true /* IPS */);
+Arduino_ESP32SPIDMA *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, -1);
+Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, true /* IPS */);
 /*******************************************************************************
    End of Arduino_GFX setting
  ******************************************************************************/
@@ -54,15 +54,23 @@ int cbcr_size;
 uint8_t *y_buffer;
 uint8_t *cb_buffer;
 uint8_t *cr_buffer;
-uint16_t *plm_buffer;
 TaskHandle_t video_task_handle;
 QueueHandle_t video_queue_handle;
+
+uint16_t disp_w;
+uint16_t disp_h;
+uint16_t x_offset = 0;
+uint16_t x_skip = 0;
+uint16_t ys_skip;
+uint16_t yt_skip;
+uint16_t cbcr_skip;
 
 int decode_video_count = 0;
 int decode_audio_count = 0;
 
-typedef struct {
-	volatile uint_fast8_t queue = false;
+typedef struct
+{
+  volatile uint_fast8_t queue = false;
 } queue_t;
 
 queue_t *q = NULL;
@@ -73,8 +81,7 @@ static void convert_video_task(void *arg)
 
   while (xQueueReceive(video_queue_handle, &q1, portMAX_DELAY))
   {
-    YCbCr2RGB565Be(y_buffer, cb_buffer, cr_buffer, plm_w, plm_h, plm_buffer);
-    gfx->draw16bitBeRGBBitmap(0, 30, plm_buffer, plm_w, plm_h);
+    gfx->drawYCbCrBitmap(0, 0, y_buffer, cb_buffer, cr_buffer, disp_w, disp_h);
     ++decode_video_count;
   }
 }
@@ -83,9 +90,37 @@ static void convert_video_task(void *arg)
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
   // Do something with frame->y.data, frame->cr.data, frame->cb.data
-  memcpy(y_buffer, frame->y.data, y_size);
-  memcpy(cb_buffer, frame->cb.data, cbcr_size);
-  memcpy(cr_buffer, frame->cr.data, cbcr_size);
+  uint32_t *y_src = (uint32_t *)(frame->y.data + x_offset);
+  uint32_t *y_src2 = y_src + (plm_w >> 2);
+  uint32_t *y_trgt = (uint32_t *)y_buffer;
+  uint32_t *y_trgt2 = y_trgt + (disp_w >> 2);
+  uint32_t *cb_src = (uint32_t *)(frame->cb.data + (x_offset >> 1));
+  uint32_t *cb_trgt = (uint32_t *)cb_buffer;
+  uint32_t *cr_src = (uint32_t *)(frame->cr.data + (x_offset >> 1));
+  uint32_t *cr_trgt = (uint32_t *)cr_buffer;
+
+  uint16_t w = disp_w >> 3;
+  uint16_t h = disp_h >> 1;
+  while (h--)
+  {
+    uint16_t i = w;
+    while (i--)
+    {
+      *y_trgt++ = *y_src++;
+      *y_trgt++ = *y_src++;
+      *y_trgt2++ = *y_src2++;
+      *y_trgt2++ = *y_src2++;
+      *cb_trgt++ = *cb_src++;
+      *cr_trgt++ = *cr_src++;
+    }
+    y_src += ys_skip;
+    y_src2 += ys_skip;
+    y_trgt += yt_skip;
+    y_trgt2 += yt_skip;
+    cb_src += cbcr_skip;
+    cr_src += cbcr_skip;
+  }
+
   xQueueSend(video_queue_handle, &q, 0);
 }
 
@@ -133,13 +168,14 @@ void setup(void)
   }
   else
   {
-    i2s_init(I2S_NUM_0,
-             44100 /* sample_rate */,
-             -1 /* mck_io_num */, /*!< MCK in out pin. Note that ESP32 supports setting MCK on GPIO0/GPIO1/GPIO3 only*/
-             I2S_BCLK,            /*!< BCK in out pin*/
-             I2S_LRCK,            /*!< WS in out pin*/
-             I2S_DOUT,            /*!< DATA out pin*/
-             -1 /* data_in_num */ /*!< DATA in pin*/
+    i2s_init(
+        I2S_NUM_0,
+        44100 /* sample_rate */,
+        -1 /* mck_io_num */, /*!< MCK in out pin. Note that ESP32 supports setting MCK on GPIO0/GPIO1/GPIO3 only*/
+        I2S_BCLK,            /*!< BCK in out pin*/
+        I2S_LRCK,            /*!< WS in out pin*/
+        I2S_DOUT,            /*!< DATA out pin*/
+        -1 /* data_in_num */ /*!< DATA in pin*/
     );
     i2s_zero_dma_buffer(I2S_NUM_0);
 
@@ -148,6 +184,9 @@ void setup(void)
     {
       printf("Couldn't open file %s\n", mpeg_file);
     }
+
+    // Probe the MPEG-PS data to find the actual number of video and audio streams
+    plm_probe(plm, PLM_BUFFER_DEFAULT_SIZE);
 
     // Install the video & audio decode callbacks
     plm_set_video_decode_callback(plm, my_video_callback, NULL);
@@ -159,12 +198,34 @@ void setup(void)
 
     plm_w = plm_get_width(plm);
     plm_h = plm_get_height(plm);
-    y_size = plm_w * plm_h;
+    disp_w = gfx->width();
+    disp_h = gfx->height();
+    if (disp_w < plm_w)
+    {
+      x_skip = plm_w - disp_w;
+      x_offset += x_skip / 2;
+    }
+    else
+    {
+      disp_w = plm_w;
+    }
+    if (disp_h < plm_h)
+    {
+      x_offset += ((plm_h - disp_h) / 2) * plm_w;
+    }
+    else
+    {
+      disp_h = plm_h;
+    }
+    ys_skip = (plm_w >> 2) + (x_skip >> 2);
+    yt_skip = disp_w >> 2;
+    cbcr_skip = x_skip >> 3;
+
+    y_size = disp_w * disp_h;
     cbcr_size = y_size >> 2;
     y_buffer = (uint8_t *)malloc(y_size);
     cb_buffer = (uint8_t *)malloc(cbcr_size);
     cr_buffer = (uint8_t *)malloc(cbcr_size);
-    plm_buffer = (uint16_t *)malloc(plm_w * plm_h * 2);
 
     video_queue_handle = xQueueCreate(1, sizeof(queue_t *));
 
