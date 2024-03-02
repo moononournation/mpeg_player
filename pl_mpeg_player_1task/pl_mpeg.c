@@ -884,7 +884,10 @@ int plm_buffer_read(plm_buffer_t *self, int count)
 
 void plm_buffer_align(plm_buffer_t *self)
 {
-	self->bit_index = ((self->bit_index + 7) >> 3) << 3; // Align to next byte
+	if (self->bit_index & 0b111)
+	{
+		self->bit_index = ((self->bit_index + 7) >> 3) << 3; // Align to next byte
+	}
 }
 
 void plm_buffer_skip(plm_buffer_t *self, size_t count)
@@ -898,13 +901,20 @@ void plm_buffer_skip(plm_buffer_t *self, size_t count)
 int plm_buffer_skip_bytes(plm_buffer_t *self, uint8_t v)
 {
 	plm_buffer_align(self);
-	int skipped = 0;
-	while (plm_buffer_has(self, 8) && self->bytes[self->bit_index >> 3] == v)
+	if ((((self->length << 3) - self->bit_index) >= 8) && (self->bytes[self->bit_index >> 3] != v))
 	{
-		self->bit_index += 8;
-		skipped++;
+		return 0;
 	}
-	return skipped;
+	else
+	{
+		int skipped = 0;
+		while (plm_buffer_has(self, 8) && self->bytes[self->bit_index >> 3] == v)
+		{
+			self->bit_index += 8;
+			skipped++;
+		}
+		return skipped;
+	}
 }
 
 int plm_buffer_next_start_code(plm_buffer_t *self)
@@ -913,7 +923,7 @@ int plm_buffer_next_start_code(plm_buffer_t *self)
 
 	while (plm_buffer_has(self, (5 << 3)))
 	{
-		size_t byte_index = (self->bit_index) >> 3;
+		size_t byte_index = self->bit_index >> 3;
 		if (
 				self->bytes[byte_index] == 0x00 &&
 				self->bytes[byte_index + 1] == 0x00 &&
