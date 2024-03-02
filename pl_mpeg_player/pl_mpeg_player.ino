@@ -1,11 +1,11 @@
 const char *root = "/root";
-const char *mpeg_file = "/root/output.mpg";
+const char *mpeg_file = "/root/224x112.mpg";
 
 #include <WiFi.h>
 
 #include <FFat.h>
-
 #include <LittleFS.h>
+#include <SD.h>
 #include <SD_MMC.h>
 
 #include "TDECK_PINS.h"
@@ -93,22 +93,28 @@ void setup(void)
 
   if (!FFat.begin(false, root))
   // if (!LittleFS.begin(false, root))
-  // pinMode(SD_CS /* CS */, OUTPUT);
-  // digitalWrite(SD_CS /* CS */, HIGH);
-  // SD_MMC.setPins(SD_SCK /* CLK */, SD_MOSI /* CMD/MOSI */, SD_MISO /* D0/MISO */);
+  // pinMode(SD_CS, OUTPUT);
+  // digitalWrite(SD_CS, HIGH);
+  // SPIClass spi = SPIClass(HSPI);
+  // spi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+  // if (!SD.begin(SD_CS, spi, 80000000, "/root"))
+  // pinMode(SD_CS, OUTPUT);
+  // digitalWrite(SD_CS, HIGH);
+  // SD_MMC.setPins(SD_SCK, SD_MOSI, SD_MISO);
   // if (!SD_MMC.begin(root, true /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_DEFAULT))
   {
     Serial.println("ERROR: File system mount failed!");
   }
   else
   {
-    i2s_init(I2S_NUM_0,
-             44100 /* sample_rate */,
-             -1 /* mck_io_num */, /*!< MCK in out pin. Note that ESP32 supports setting MCK on GPIO0/GPIO1/GPIO3 only*/
-             I2S_BCLK,            /*!< BCK in out pin*/
-             I2S_LRCK,            /*!< WS in out pin*/
-             I2S_DOUT,            /*!< DATA out pin*/
-             -1 /* data_in_num */ /*!< DATA in pin*/
+    i2s_init(
+        I2S_NUM_0,
+        44100 /* sample_rate */,
+        -1 /* mck_io_num */, /*!< MCK in out pin. Note that ESP32 supports setting MCK on GPIO0/GPIO1/GPIO3 only*/
+        I2S_BCLK,            /*!< BCK in out pin*/
+        I2S_LRCK,            /*!< WS in out pin*/
+        I2S_DOUT,            /*!< DATA out pin*/
+        -1 /* data_in_num */ /*!< DATA in pin*/
     );
     i2s_zero_dma_buffer(I2S_NUM_0);
 
@@ -117,6 +123,9 @@ void setup(void)
     {
       printf("Couldn't open file %s\n", mpeg_file);
     }
+
+    // Probe the MPEG-PS data to find the actual number of video and audio streams
+    plm_probe(plm, PLM_BUFFER_DEFAULT_SIZE);
 
     // Install the video & audio decode callbacks
     plm_set_video_decode_callback(plm, my_video_callback, NULL);

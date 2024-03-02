@@ -3,7 +3,7 @@
 MPEG 224x112
 
 ```console
-ffmpeg -i input.mp4 -c:v mpeg1video -q:v 0 -c:a mp2 -ab 224k -vf "fps=25,scale=224:112:flags=lanczos" -y output.mpg
+ffmpeg -i input.mp4 -c:v mpeg1video -q:v 0 -c:a mp2 -ab 224k -vf "fps=25,scale=224:112:flags=lanczos" -y 224x112.mpg
 ```
 
 ## MPEG 320x240
