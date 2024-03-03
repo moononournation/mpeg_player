@@ -29,7 +29,7 @@ const char *mpeg_file = "/root/320x240.mpg";
   }
 #define GFX_BL TDECK_TFT_BACKLIGHT
 Arduino_ESP32SPIDMA *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, GFX_NOT_DEFINED);
-Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, false /* IPS */);
+Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, true /* IPS */);
 /*******************************************************************************
    End of Arduino_GFX setting
  ******************************************************************************/
@@ -45,6 +45,7 @@ Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotat
 #include "plm_audio.h"
 plm_t *plm;
 plm_frame_t *frame = NULL;
+double plm_frame_interval;
 int plm_w;
 int plm_h;
 int y_size;
@@ -62,6 +63,7 @@ uint16_t x_skip = 0;
 uint16_t ys_skip;
 uint16_t yt_skip;
 uint16_t cbcr_skip;
+uint16_t frame_count;
 
 int decode_video_count = 0;
 int decode_audio_count = 0;
@@ -186,7 +188,6 @@ void setup(void)
     plm_set_video_decode_callback(plm, my_video_callback, NULL);
     plm_set_audio_decode_callback(plm, my_audio_callback, NULL);
 
-    // plm_video_set_no_delay(plm->video_decoder, true);
     // plm_set_video_enabled(plm, false);
     // plm_set_audio_enabled(plm, false);
 
@@ -221,6 +222,8 @@ void setup(void)
     cb_buffer = (uint8_t *)malloc(cbcr_size);
     cr_buffer = (uint8_t *)malloc(cbcr_size);
 
+    frame_count = 0;
+
     video_queue_handle = xQueueCreate(1, sizeof(queue_t *));
 
     xTaskCreatePinnedToCore(convert_video_task, "convert_video_task", 1600, NULL, 1, &video_task_handle, 0);
@@ -248,9 +251,9 @@ void loop()
       // Serial.printf("Excess: %lu\n", cur_ms - next_frame_ms);
     }
 
-    plm_decode(plm, 0.04);
+    plm_decode(plm, plm_frame_interval);
 
-    next_frame_ms += 40;
+    next_frame_ms = (unsigned int)((++frame_count) * plm_frame_interval);
   } while (!plm_has_ended(plm));
 
   Serial.printf("Time used: %lu, decode_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
