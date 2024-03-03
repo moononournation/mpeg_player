@@ -1,15 +1,14 @@
 const char *root = "/root";
-const char *mpeg_file = "/root/output.mpg";
+const char *mpeg_file = "/root/320x240.mpg";
 
-#include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
 
-#include <FFat.h>
+#include <WiFi.h>
 
+#include <FFat.h>
 #include <LittleFS.h>
-#include <SD_MMC.h>
 
 #include "TDECK_PINS.h"
 
@@ -29,8 +28,8 @@ const char *mpeg_file = "/root/output.mpg";
     delay(500);                             \
   }
 #define GFX_BL TDECK_TFT_BACKLIGHT
-Arduino_ESP32SPIDMA *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, -1);
-Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, true /* IPS */);
+Arduino_ESP32SPIDMA *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, GFX_NOT_DEFINED);
+Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, false /* IPS */);
 /*******************************************************************************
    End of Arduino_GFX setting
  ******************************************************************************/
@@ -44,7 +43,6 @@ Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotat
 #define PL_MPEG_IMPLEMENTATION
 #include "pl_mpeg.h"
 #include "plm_audio.h"
-#include "YCbCr2RGB.h"
 plm_t *plm;
 plm_frame_t *frame = NULL;
 int plm_w;
@@ -159,10 +157,6 @@ void setup(void)
 
   if (!FFat.begin(false, root))
   // if (!LittleFS.begin(false, root))
-  // pinMode(SD_CS /* CS */, OUTPUT);
-  // digitalWrite(SD_CS /* CS */, HIGH);
-  // SD_MMC.setPins(SD_SCK /* CLK */, SD_MOSI /* CMD/MOSI */, SD_MISO /* D0/MISO */);
-  // if (!SD_MMC.begin(root, true /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_DEFAULT))
   {
     Serial.println("ERROR: File system mount failed!");
   }
