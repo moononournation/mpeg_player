@@ -46,6 +46,7 @@ Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotat
 plm_t *plm;
 plm_frame_t *frame = NULL;
 double plm_frame_interval;
+uint16_t frame_interval_ms;
 int plm_w;
 int plm_h;
 int y_size;
@@ -191,6 +192,8 @@ void setup(void)
     // plm_set_video_enabled(plm, false);
     // plm_set_audio_enabled(plm, false);
 
+    plm_frame_interval = 1.0 / plm_get_framerate(plm);
+    frame_interval_ms = (uint16_t)(plm_frame_interval * 1000);
     plm_w = plm_get_width(plm);
     plm_h = plm_get_height(plm);
     disp_w = gfx->width();
@@ -227,6 +230,8 @@ void setup(void)
     video_queue_handle = xQueueCreate(1, sizeof(queue_t *));
 
     xTaskCreatePinnedToCore(convert_video_task, "convert_video_task", 1600, NULL, 1, &video_task_handle, 0);
+
+    Serial.printf("plm_frame_interval: %f, frame_interval_ms: %d, plm_w: %d, plm_h: %d\n", plm_frame_interval, frame_interval_ms, plm_w, plm_h);
   }
 }
 
@@ -253,7 +258,7 @@ void loop()
 
     plm_decode(plm, plm_frame_interval);
 
-    next_frame_ms = (unsigned int)((++frame_count) * plm_frame_interval);
+    next_frame_ms += frame_interval_ms;
   } while (!plm_has_ended(plm));
 
   Serial.printf("Time used: %lu, decode_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
