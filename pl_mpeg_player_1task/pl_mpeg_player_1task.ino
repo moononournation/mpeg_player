@@ -59,11 +59,12 @@ QueueHandle_t video_queue_handle;
 
 uint16_t disp_w;
 uint16_t disp_h;
-uint16_t x_offset = 0;
+uint16_t ys_offset = 0;
+uint16_t cbcrs_offset = 0;
 uint16_t x_skip = 0;
 uint16_t ys_skip;
 uint16_t yt_skip;
-uint16_t cbcr_skip;
+uint16_t cbcrs_skip;
 uint16_t frame_count;
 
 int decode_video_count = 0;
@@ -91,13 +92,13 @@ static void convert_video_task(void *arg)
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
   // Do something with frame->y.data, frame->cr.data, frame->cb.data
-  uint32_t *y_src = (uint32_t *)(frame->y.data + x_offset);
+  uint32_t *y_src = (uint32_t *)(frame->y.data + ys_offset);
   uint32_t *y_src2 = y_src + (plm_w >> 2);
   uint32_t *y_trgt = (uint32_t *)y_buffer;
   uint32_t *y_trgt2 = y_trgt + (disp_w >> 2);
-  uint32_t *cb_src = (uint32_t *)(frame->cb.data + (x_offset >> 1));
+  uint32_t *cb_src = (uint32_t *)(frame->cb.data + cbcrs_offset);
   uint32_t *cb_trgt = (uint32_t *)cb_buffer;
-  uint32_t *cr_src = (uint32_t *)(frame->cr.data + (x_offset >> 1));
+  uint32_t *cr_src = (uint32_t *)(frame->cr.data + cbcrs_offset);
   uint32_t *cr_trgt = (uint32_t *)cr_buffer;
 
   uint16_t w = disp_w >> 3;
@@ -118,8 +119,8 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
     y_src2 += ys_skip;
     y_trgt += yt_skip;
     y_trgt2 += yt_skip;
-    cb_src += cbcr_skip;
-    cr_src += cbcr_skip;
+    cb_src += cbcrs_skip;
+    cr_src += cbcrs_skip;
   }
 
   xQueueSend(video_queue_handle, &q, 0);
@@ -201,7 +202,8 @@ void setup(void)
     if (disp_w < plm_w)
     {
       x_skip = plm_w - disp_w;
-      x_offset += x_skip / 2;
+      ys_offset += x_skip / 2;
+      cbcrs_offset += x_skip / 2 / 2;
     }
     else
     {
@@ -209,7 +211,8 @@ void setup(void)
     }
     if (disp_h < plm_h)
     {
-      x_offset += ((plm_h - disp_h) / 2) * plm_w;
+      ys_offset += ((plm_h - disp_h) / 2) * plm_w;
+      cbcrs_offset += ((plm_h - disp_h) / 2) * plm_w / 4;
     }
     else
     {
@@ -217,7 +220,7 @@ void setup(void)
     }
     ys_skip = (plm_w >> 2) + (x_skip >> 2);
     yt_skip = disp_w >> 2;
-    cbcr_skip = x_skip >> 3;
+    cbcrs_skip = x_skip >> 3;
 
     y_size = disp_w * disp_h;
     cbcr_size = y_size >> 2;
