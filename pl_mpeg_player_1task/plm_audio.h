@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pl_mpeg.h"
+
 // -----------------------------------------------------------------------------
 // plm_audio implementation
 

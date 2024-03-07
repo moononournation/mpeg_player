@@ -1,4 +1,3 @@
-#include "pl_mpeg.h"
 #include "plm_audio.h"
 
 plm_audio_t *plm_audio_create_with_buffer(plm_buffer_t *buffer, int destroy_when_done)

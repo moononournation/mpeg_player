@@ -1,5 +1,6 @@
 const char *root = "/root";
-const char *mpeg_file = "/root/320x240.mpg";
+const char *mpeg_file = "/root/AVSEQ02.DAT";
+// const char *mpeg_file = "/root/VCD.DAT";
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
