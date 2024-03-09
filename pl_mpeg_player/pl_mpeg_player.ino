@@ -48,6 +48,8 @@ Arduino_GFX *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotat
 #include "pl_mpeg.h"
 plm_t *plm;
 plm_frame_t *frame = NULL;
+double plm_frame_interval;
+uint16_t frame_interval_ms;
 int plm_w;
 int plm_h;
 uint16_t *plm_buffer;
@@ -175,6 +177,8 @@ void setup(void)
     // plm_set_video_enabled(plm, false);
     // plm_set_audio_enabled(plm, false);
 
+    plm_frame_interval = 1.0 / plm_get_framerate(plm);
+    frame_interval_ms = (uint16_t)(plm_frame_interval * 1000);
     plm_w = plm_get_width(plm);
     plm_h = plm_get_height(plm);
     plm_buffer = (uint16_t *)malloc(plm_w * plm_h * 2);
@@ -202,9 +206,9 @@ void loop()
       // Serial.printf("Excess: %lu\n", cur_ms - next_frame_ms);
     }
 
-    plm_decode(plm, 0.04);
+    plm_decode(plm, plm_frame_interval);
 
-    next_frame_ms += 40;
+    next_frame_ms += frame_interval_ms;
   } while (!plm_has_ended(plm));
 
   Serial.printf("Time used: %lu, decode_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
