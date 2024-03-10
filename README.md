@@ -1,9 +1,9 @@
 # MPEG Player
 
-MPEG 224x128
+## MPEG 272x152
 
 ```console
-ffmpeg -i input.mp4 -c:v mpeg1video -vb 160k -c:a mp2 -ab 64k -vf "fps=25,scale=224:128:flags=lanczos,crop=224:128:(in_w-224)/2:0" -y 224x128.mpg
+ffmpeg -i input.mp4 -c:v mpeg1video -vb 160k -c:a mp2 -ab 64k -vf "fps=25,scale=272:152:flags=lanczos" -y 272x152.mpg
 ```
 
 ## MPEG 320x240

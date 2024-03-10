@@ -1,5 +1,8 @@
+// #pragma GCC optimize("O3")
+#pragma GCC optimize("Ofast")
+
 const char *root = "/root";
-const char *mpeg_file = "/root/224x128.mpg";
+const char *mpeg_file = "/root/272x152.mpg";
 
 #include <WiFi.h>
 
@@ -97,7 +100,7 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
   // explicit disable SD before use display
   digitalWrite(TDECK_SDCARD_CS, HIGH);
   digitalWrite(TDECK_RADIO_CS, HIGH);
-  gfx->draw16bitBeRGBBitmap(0, 0, plm_buffer, plm_w, plm_h);
+  gfx->draw16bitBeRGBBitmap(36, 44, plm_buffer, plm_w, plm_h);
   ++decode_video_count;
 }
 
