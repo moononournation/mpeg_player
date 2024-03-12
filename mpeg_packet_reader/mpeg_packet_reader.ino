@@ -55,6 +55,7 @@ void setup(void)
       fclose(f);
     }
   }
+  Serial.println("done");
 }
 
 void loop()
