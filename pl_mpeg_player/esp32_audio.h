@@ -1,7 +1,5 @@
 #include "driver/i2s.h"
 
-#include "MP3DecoderHelix.h"
-
 #define GAIN_LEVEL 0.005
 
 static unsigned long total_read_audio_ms = 0;
