@@ -2,7 +2,7 @@
  * http://andrewduncan.net/mpeg/mpeg-1.html
  */
 
-// #define PRINT_DEBUG_MSG
+#define PRINT_DEBUG_MSG
 
 #define MPEG_START_CODE_PACK_32 0xBA010000
 #define MPEG_START_CODE_PACK 0x000001BA
@@ -13,6 +13,7 @@
 #define MPEG_VIDEO_RANGE_START 0x000001E0
 #define MPEG_VIDEO_RANGE_END 0x000001EF
 #define MPEG_STD_BUFFER_SIZE_MASK 0b11000000
+#define MPEG_STD_BUFFER_SIZE_PREFIX 0b01000000
 
 char *buf;
 size_t buf_read;
@@ -189,9 +190,10 @@ void mpeg_packet_scan(FILE *f)
         while (buf[i] == 0xFF)
         {
           ++i;
+          --packet_length;
         }
 
-        if ((buf[i] & MPEG_STD_BUFFER_SIZE_MASK) > 0)
+        if ((buf[i] & MPEG_STD_BUFFER_SIZE_MASK) == MPEG_STD_BUFFER_SIZE_PREFIX)
         {
           // skip STD_BUFFER_SIZE
           i += 2;
@@ -220,6 +222,7 @@ void mpeg_packet_scan(FILE *f)
         else
         {
           presentation_ts = 0;
+          --packet_length;
         }
 
         if (dts)
@@ -236,7 +239,6 @@ void mpeg_packet_scan(FILE *f)
           decoding_ts /= 90;
           packet_length -= 5;
         }
-
         if ((start_code >= MPEG_AUDIO_RANGE_START) && (start_code <= MPEG_AUDIO_RANGE_END)) // audio
         {
 #ifdef PRINT_DEBUG_MSG
