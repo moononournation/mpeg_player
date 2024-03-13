@@ -50,9 +50,13 @@ void setup(void)
     }
     else
     {
+      unsigned long start_ms = millis();
+
       mpeg_init(f);
       mpeg_packet_scan(f);
       fclose(f);
+
+      Serial.printf("duration: %ld\n", millis() - start_ms);
     }
   }
   Serial.println("done");

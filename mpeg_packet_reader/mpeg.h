@@ -22,8 +22,6 @@ size_t cnt_unknown = 0;
 size_t advance_bytes = 0;
 #endif
 
-unsigned long start_ms;
-
 uint32_t start_code = 0;
 size_t first_pack_offset = 0;
 size_t pack_size = 0;
@@ -77,8 +75,6 @@ void mpeg_init(FILE *f)
 
 void mpeg_packet_scan(FILE *f)
 {
-  start_ms = millis();
-
   buf_read = fread(buf, 1, pack_size, f);
 #ifdef PRINT_DEBUG_MSG
   Serial.printf("[%08X] read: %d\n", file_index, buf_read);
@@ -294,9 +290,7 @@ void mpeg_packet_scan(FILE *f)
   }
 #ifdef PRINT_DEBUG_MSG
   Serial.printf(
-      "BA: %d, BB: %d,ap: %d, vp: %d, unknown: %d, advance_bytes: %u, duration: %ld, cnt_read: %d\n",
-      cnt_BA, cnt_BB, cnt_ap, cnt_vp, cnt_unknown, advance_bytes, millis() - start_ms, cnt_read);
-#else
-  Serial.printf("duration: %ld\n", millis() - start_ms);
+      "BA: %d, BB: %d,ap: %d, vp: %d, unknown: %d, advance_bytes: %u, cnt_read: %d\n",
+      cnt_BA, cnt_BB, cnt_ap, cnt_vp, cnt_unknown, advance_bytes, cnt_read);
 #endif
 }
