@@ -2,10 +2,17 @@
  * http://andrewduncan.net/mpeg/mpeg-1.html
  */
 
-#define PRINT_DEBUG_MSG
+// #define PRINT_DEBUG_MSG
 
+#define MPEG_START_CODE_PACK_32 0xBA010000
 #define MPEG_START_CODE_PACK 0x000001BA
 #define MPEG_START_CODE_SYSTEM_HEADER 0x000001BB
+#define MPEG_PACKET_MASK 0x000001C0
+#define MPEG_AUDIO_RANGE_START 0x000001C0
+#define MPEG_AUDIO_RANGE_END 0x000001CF
+#define MPEG_VIDEO_RANGE_START 0x000001E0
+#define MPEG_VIDEO_RANGE_END 0x000001EF
+#define MPEG_STD_BUFFER_SIZE_MASK 0b11000000
 
 char *buf;
 size_t buf_read;
@@ -35,7 +42,7 @@ void mpeg_init(FILE *f)
   size_t thrid_pack_offset = 0;
   while (fread(&start_code, 4, 1, f) && (found_pack_count < 4))
   {
-    if (start_code == 0xBA010000)
+    if (start_code == MPEG_START_CODE_PACK_32)
     {
       ++found_pack_count;
       if (found_pack_count == 1)
@@ -77,8 +84,8 @@ void mpeg_packet_scan(FILE *f)
 {
   buf_read = fread(buf, 1, pack_size, f);
 #ifdef PRINT_DEBUG_MSG
-  Serial.printf("[%08X] read: %d\n", file_index, buf_read);
-  ++cnt_read;
+  // Serial.printf("[%08X] read: %d\n", file_index, buf_read);
+  // ++cnt_read;
 #endif
 
   int i = 0;
@@ -168,7 +175,7 @@ void mpeg_packet_scan(FILE *f)
         ++cnt_BB;
 #endif
       }
-      else if ((start_code >= 0x000001C0) && (start_code <= 0x000001DF)) // audio
+      else if ((start_code & MPEG_PACKET_MASK) > 0)
       {
 #ifdef PRINT_DEBUG_MSG
         start_code_offset = file_index + i - 4;
@@ -178,8 +185,18 @@ void mpeg_packet_scan(FILE *f)
         packet_length <<= 8;
         packet_length |= (buf[i++]);
 
-        i += 2;
-        packet_length -= 2;
+        // stuffing byte
+        while (buf[i] == 0xFF)
+        {
+          ++i;
+        }
+
+        if ((buf[i] & MPEG_STD_BUFFER_SIZE_MASK) > 0)
+        {
+          // skip STD_BUFFER_SIZE
+          i += 2;
+          packet_length -= 2;
+        }
 
         uint32_t presentation_ts = (buf[i++]);
         uint32_t decoding_ts = 0;
@@ -200,6 +217,10 @@ void mpeg_packet_scan(FILE *f)
           presentation_ts /= 90;
           packet_length -= 5;
         }
+        else
+        {
+          presentation_ts = 0;
+        }
 
         if (dts)
         {
@@ -215,33 +236,27 @@ void mpeg_packet_scan(FILE *f)
           decoding_ts /= 90;
           packet_length -= 5;
         }
-#ifdef PRINT_DEBUG_MSG
-        Serial.printf(
-            "[%08X] %08X Audio Packet, stream_id: %u, packet_length: %u, pts: %c, dts: %c\n",
-            start_code_offset, start_code, stream_id, packet_length, pts ? 'Y' : 'N', dts ? 'Y' : 'N');
-        Serial.flush();
-        ++cnt_ap;
-#endif
 
-        i += packet_length;
-      }
-      else if ((start_code >= 0x000001E0) && (start_code <= 0x000001EF)) // video
-      {
+        if ((start_code >= MPEG_AUDIO_RANGE_START) && (start_code <= MPEG_AUDIO_RANGE_END)) // audio
+        {
 #ifdef PRINT_DEBUG_MSG
-        start_code_offset = file_index + i - 4;
+          Serial.printf(
+              "[%08X] %08X Audio Packet, stream_id: %u, packet_length: %u, pts: %c, dts: %c, presentation_ts: %u, decoding_ts: %u\n",
+              start_code_offset, start_code, stream_id, packet_length, pts ? 'Y' : 'N', dts ? 'Y' : 'N', presentation_ts, decoding_ts);
+          Serial.flush();
+          ++cnt_ap;
 #endif
-        uint8_t stream_id = start_code & 0xFF;
-        uint16_t packet_length = (buf[i++]);
-        packet_length <<= 8;
-        packet_length |= (buf[i++]);
-
+        }
+        else if ((start_code >= MPEG_VIDEO_RANGE_START) && (start_code <= MPEG_VIDEO_RANGE_END)) // video
+        {
 #ifdef PRINT_DEBUG_MSG
-        Serial.printf(
-            "[%08X] %08X Video Packet, stream_id: %u, packet_length: %u\n",
-            start_code_offset, start_code, stream_id, packet_length);
-        ++cnt_vp;
+          Serial.printf(
+              "[%08X] %08X Video Packet, stream_id: %u, packet_length: %u, pts: %c, dts: %c, presentation_ts: %u, decoding_ts: %u\n",
+              start_code_offset, start_code, stream_id, packet_length, pts ? 'Y' : 'N', dts ? 'Y' : 'N', presentation_ts, decoding_ts);
+          Serial.flush();
+          ++cnt_vp;
 #endif
-
+        }
         i += packet_length;
       }
       else
@@ -271,10 +286,6 @@ void mpeg_packet_scan(FILE *f)
         while (advanced)
         {
           buf_read = fread(buf, 1, advanced, f);
-#ifdef PRINT_DEBUG_MSG
-      Serial.printf("[%08X] read: %d\n", file_index, buf_read);
-      ++cnt_read;
-#endif
           advanced -= buf_read;
           file_index += buf_read;
         }
@@ -282,8 +293,8 @@ void mpeg_packet_scan(FILE *f)
 
       buf_read = fread(buf, 1, pack_size, f);
 #ifdef PRINT_DEBUG_MSG
-      Serial.printf("[%08X] read: %d\n", file_index, buf_read);
-      ++cnt_read;
+      // Serial.printf("[%08X] read: %d\n", file_index, buf_read);
+      // ++cnt_read;
 #endif
       i = 0;
     }
