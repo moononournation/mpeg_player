@@ -1,6 +1,6 @@
 #include "driver/i2s.h"
 
-#define GAIN_LEVEL 0.005
+#define GAIN_LEVEL 0.8
 
 static unsigned long total_read_audio_ms = 0;
 static unsigned long total_decode_audio_ms = 0;
@@ -45,25 +45,4 @@ static esp_err_t i2s_init(i2s_port_t i2s_num, uint32_t sample_rate,
     ret_val |= i2s_set_pin(i2s_num, &pin_config);
 
     return ret_val;
-}
-
-uint8_t aBuf[1152 * 4];
-union
-{
-    uint16_t v16;
-    uint8_t v8[2];
-} iSample;
-static void i2s_play_float(float *sample, uint16_t len)
-{
-    uint16_t i = len << 1;
-    uint8_t *p = aBuf;
-    while (i--)
-    {
-        iSample.v16 = (uint16_t)(*sample++ * (32767.0f * GAIN_LEVEL)) + 32768;
-        // iSample.v16 = (uint16_t)(*sample++ * (32767.0f / 2147418112.0f * GAIN_LEVEL)) + 32768;
-        *p++ = iSample.v8[1];
-        *p++ = iSample.v8[0];
-    }
-    size_t i2s_bytes_written = 0;
-    i2s_write(_i2s_num, aBuf, len << 2, &i2s_bytes_written, portMAX_DELAY);
 }

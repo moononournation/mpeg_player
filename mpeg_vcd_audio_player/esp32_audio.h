@@ -30,7 +30,7 @@ static esp_err_t i2s_init(i2s_port_t i2s_num, uint32_t sample_rate,
   i2s_config.use_apll = false;
   i2s_config.tx_desc_auto_clear = true;
   i2s_config.fixed_mclk = 0;
-  i2s_config.mclk_multiple = I2S_MCLK_MULTIPLE_DEFAULT;
+  i2s_config.mclk_multiple = I2S_MCLK_MULTIPLE_128;
   i2s_config.bits_per_chan = I2S_BITS_PER_CHAN_16BIT;
 
   i2s_pin_config_t pin_config;
