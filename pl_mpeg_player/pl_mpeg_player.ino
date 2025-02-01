@@ -80,8 +80,12 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
     // explicit disable SD before use display
     digitalWrite(SD_CS, HIGH);
 #endif
-    gfx->draw16bitBeRGBBitmap(36, 44, plm_buffer, plm_w, plm_h);
+    gfx->draw16bitBeRGBBitmap(0, 0, plm_buffer, plm_w, plm_h);
     ++display_video_count;
+  }
+  else
+  {
+    // Serial.printf("skip display frame #%d\n", decode_video_count);
   }
   ++decode_video_count;
 }
