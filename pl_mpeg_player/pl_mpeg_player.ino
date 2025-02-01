@@ -74,6 +74,7 @@ void YCbCr2RGB565Be(uint8_t *yData, uint8_t *cbData, uint8_t *crData, uint16_t w
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
   if (cur_ms < next_frame_ms)
+  // if (decode_video_count % 2)
   {
     YCbCr2RGB565Be(frame->y.data, frame->cb.data, frame->cr.data, frame->width, frame->height, plm_buffer);
 #if defined(SPI_SCK) && defined(SD_CS)
