@@ -60,7 +60,7 @@ static void i2s_play_float(float *sample, uint16_t len)
   while (i--)
   {
 #ifdef I2S_DEFAULT_GAIN_LEVEL
-    iSample.v16 = (uint16_t)((*sample++ * (32767.0f / 8 * I2S_DEFAULT_GAIN_LEVEL)) + 32768);
+    iSample.v16 = (uint16_t)((*sample++ * (32767.0f * 0.01f * I2S_DEFAULT_GAIN_LEVEL)) + 32768);
     // iSample.v16 = (uint16_t)((*sample++ * (32767.0f / 2147418112.0f * I2S_DEFAULT_GAIN_LEVEL)) + 32768);
 #else
     iSample.v16 = (uint16_t)(*sample++ * (32767.0f)) + 32768;
