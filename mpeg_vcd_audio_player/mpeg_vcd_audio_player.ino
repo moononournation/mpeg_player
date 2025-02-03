@@ -7,7 +7,6 @@ const char *root = "/root";
 const char *mpeg_file = "/root/AVSEQ02.DAT";
 // const char *mpeg_file = "/root/VCD.DAT";
 
-
 // Dev Device Pins: <https://github.com/moononournation/Dev_Device_Pins.git>
 // #include "PINS_T-DECK.h"
 #include "PINS_JC1060P470.h"
