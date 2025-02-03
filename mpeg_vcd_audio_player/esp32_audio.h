@@ -50,13 +50,13 @@ esp_err_t i2s_init()
 #include "kjmp2.h"
 kjmp2_context_t *audio_context;
 unsigned char *audio_buf;
-size_t audio_buf_read = 0;
-volatile size_t audio_buf_remain = 0;
+uint32_t audio_buf_read = 0;
+volatile uint32_t audio_buf_remain = 0;
 signed short *pcm_out;
 
-const size_t audio_buf_size = KJMP2_MAX_FRAME_SIZE * 4;
+const uint32_t audio_buf_size = KJMP2_MAX_FRAME_SIZE * 4;
 
-static void fill_audio_frame(uint32_t presentation_ts, char *a_buf, size_t len)
+static void fill_audio_frame(uint32_t presentation_ts, char *a_buf, uint32_t len)
 {
   // Serial.printf("[fill_audio_frame] presentation_ts: %u, audio_buf_remain: %u, len: %u\n", presentation_ts, audio_buf_remain, len);
   // Serial.flush();

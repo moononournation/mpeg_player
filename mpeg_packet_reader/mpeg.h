@@ -16,23 +16,23 @@
 #define MPEG_STD_BUFFER_SIZE_PREFIX 0b01000000
 
 char *buf;
-size_t buf_read;
-size_t file_index = 0;
+uint32_t buf_read;
+uint32_t file_index = 0;
 
 #ifdef PRINT_DEBUG_MSG
-size_t start_code_offset;
-size_t cnt_read = 0;
-size_t cnt_BA = 0;
-size_t cnt_BB = 0;
-size_t cnt_ap = 0;
-size_t cnt_vp = 0;
-size_t cnt_unknown = 0;
-size_t advance_bytes = 0;
+uint32_t start_code_offset;
+uint32_t cnt_read = 0;
+uint32_t cnt_BA = 0;
+uint32_t cnt_BB = 0;
+uint32_t cnt_ap = 0;
+uint32_t cnt_vp = 0;
+uint32_t cnt_unknown = 0;
+uint32_t advance_bytes = 0;
 #endif
 
 uint32_t start_code = 0;
-size_t first_pack_offset = 0;
-size_t pack_size = 0;
+uint32_t first_pack_offset = 0;
+uint32_t pack_size = 0;
 
 void mpeg_init(FILE *f)
 {
@@ -40,7 +40,7 @@ void mpeg_init(FILE *f)
   file_index = 0;
 
   int found_pack_count = 0;
-  size_t thrid_pack_offset = 0;
+  uint32_t thrid_pack_offset = 0;
   while (fread(&start_code, 4, 1, f) && (found_pack_count < 4))
   {
     if (start_code == MPEG_START_CODE_PACK_32)
@@ -280,7 +280,7 @@ void mpeg_packet_scan(FILE *f)
 
       if (i > buf_read)
       {
-        size_t advanced = i - buf_read;
+        uint32_t advanced = i - buf_read;
 #ifdef PRINT_DEBUG_MSG
         Serial.printf("advanced: %u\n", advanced);
         advance_bytes += advanced;

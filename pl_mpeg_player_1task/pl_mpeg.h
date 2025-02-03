@@ -192,7 +192,7 @@ extern "C"
 	{
 		int type;
 		double pts;
-		size_t length;
+		uint32_t length;
 		uint8_t *data;
 	} plm_packet_t;
 
@@ -278,7 +278,7 @@ extern "C"
 	// free_when_done to let plmpeg call free() on the pointer when plm_destroy()
 	// is called.
 
-	plm_t *plm_create_with_memory(uint8_t *bytes, size_t length, int free_when_done);
+	plm_t *plm_create_with_memory(uint8_t *bytes, uint32_t length, int free_when_done);
 
 	// Create a plmpeg instance with a plm_buffer as source. Pass TRUE to
 	// destroy_when_done to let plmpeg call plm_buffer_destroy() on the buffer when
@@ -310,7 +310,7 @@ extern "C"
 	// streams in the file.
 	// Returns TRUE if any streams were found within the probesize.
 
-	int plm_probe(plm_t *self, size_t probesize);
+	int plm_probe(plm_t *self, uint32_t probesize);
 
 	// Get or set whether video decoding is enabled. Default TRUE.
 
@@ -458,19 +458,19 @@ extern "C"
 	// free_when_done to let plmpeg call free() on the pointer when plm_destroy()
 	// is called.
 
-	plm_buffer_t *plm_buffer_create_with_memory(uint8_t *bytes, size_t length, int free_when_done);
+	plm_buffer_t *plm_buffer_create_with_memory(uint8_t *bytes, uint32_t length, int free_when_done);
 
 	// Create an empty buffer with an initial capacity. The buffer will grow
 	// as needed. Data that has already been read, will be discarded.
 
-	plm_buffer_t *plm_buffer_create_with_capacity(size_t capacity);
+	plm_buffer_t *plm_buffer_create_with_capacity(uint32_t capacity);
 
 	// Create an empty buffer with an initial capacity. The buffer will grow
 	// as needed. Decoded data will *not* be discarded. This can be used when
 	// loading a file over the network, without needing to throttle the download.
 	// It also allows for seeking in the already loaded data.
 
-	plm_buffer_t *plm_buffer_create_for_appending(size_t initial_capacity);
+	plm_buffer_t *plm_buffer_create_for_appending(uint32_t initial_capacity);
 
 	// Destroy a buffer instance and free all data
 
@@ -482,7 +482,7 @@ extern "C"
 	// passed in length, except when the buffer was created _with_memory() for
 	// which _write() is forbidden.
 
-	size_t plm_buffer_write(plm_buffer_t *self, uint8_t *bytes, size_t length);
+	uint32_t plm_buffer_write(plm_buffer_t *self, uint8_t *bytes, uint32_t length);
 
 	// Mark the current byte length as the end of this buffer and signal that no
 	// more data is expected to be written to it. This function should be called
@@ -503,12 +503,12 @@ extern "C"
 	// Get the total size. For files, this returns the file size. For all other
 	// types it returns the number of bytes currently in the buffer.
 
-	size_t plm_buffer_get_size(plm_buffer_t *self);
+	uint32_t plm_buffer_get_size(plm_buffer_t *self);
 
 	// Get the number of remaining (yet unread) bytes in the buffer. This can be
 	// useful to throttle writing.
 
-	size_t plm_buffer_get_remaining(plm_buffer_t *self);
+	uint32_t plm_buffer_get_remaining(plm_buffer_t *self);
 
 	// Get whether the read position of the buffer is at the end and no more data
 	// is expected.
@@ -545,7 +545,7 @@ extern "C"
 	// Probe the file for the actual number of video/audio streams. See
 	// plm_probe() for the details.
 
-	int plm_demux_probe(plm_demux_t *self, size_t probesize);
+	int plm_demux_probe(plm_demux_t *self, uint32_t probesize);
 
 	// Returns the number of video streams found in the system header. This will
 	// attempt to read the system header if non is present yet.
@@ -718,10 +718,10 @@ enum plm_buffer_mode
 
 struct plm_buffer_t
 {
-	size_t bit_index;
-	size_t capacity;
-	size_t length;
-	size_t total_size;
+	uint32_t bit_index;
+	uint32_t capacity;
+	uint32_t length;
+	uint32_t total_size;
 	int discard_read_bytes;
 	int has_ended;
 	int free_when_done;
@@ -745,15 +745,15 @@ typedef struct
 	uint16_t value;
 } plm_vlc_uint_t;
 
-void plm_buffer_seek(plm_buffer_t *self, size_t pos);
-size_t plm_buffer_tell(plm_buffer_t *self);
+void plm_buffer_seek(plm_buffer_t *self, uint32_t pos);
+uint32_t plm_buffer_tell(plm_buffer_t *self);
 void plm_buffer_discard_read_bytes(plm_buffer_t *self);
 void plm_buffer_load_file_callback(plm_buffer_t *self, void *user);
 
-int plm_buffer_has(plm_buffer_t *self, size_t count);
+int plm_buffer_has(plm_buffer_t *self, uint32_t count);
 int plm_buffer_read(plm_buffer_t *self, int count);
 void plm_buffer_align(plm_buffer_t *self);
-void plm_buffer_skip(plm_buffer_t *self, size_t count);
+void plm_buffer_skip(plm_buffer_t *self, uint32_t count);
 int plm_buffer_skip_bytes(plm_buffer_t *self, uint8_t v);
 int plm_buffer_next_start_code(plm_buffer_t *self);
 int plm_buffer_find_start_code(plm_buffer_t *self, int code);

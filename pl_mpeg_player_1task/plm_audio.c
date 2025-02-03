@@ -104,7 +104,7 @@ plm_samples_t *plm_audio_decode(plm_audio_t *self)
 
 int plm_audio_find_frame_sync(plm_audio_t *self)
 {
-	size_t i;
+	uint32_t i;
 	for (i = self->buffer->bit_index >> 3; i < self->buffer->length - 1; i++)
 	{
 		if (
