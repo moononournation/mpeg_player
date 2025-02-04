@@ -1,3 +1,8 @@
+// #pragma GCC optimize("O3")
+#pragma GCC optimize("Ofast")
+// #pragma GCC optimize("O2")
+// #pragma GCC optimize("O1")
+
 const char *root = "/root";
 const char *mpeg_file = "/root/AVSEQ02.DAT";
 // const char *mpeg_file = "/root/VCD.DAT";
@@ -5,8 +10,6 @@ const char *mpeg_file = "/root/AVSEQ02.DAT";
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
-
-#include <WiFi.h>
 
 #include <FFat.h>
 #include <LittleFS.h>
@@ -68,6 +71,8 @@ uint16_t yt_skip;
 uint16_t cbcrs_skip;
 uint16_t frame_count;
 
+unsigned long next_frame_ms;
+unsigned long cur_ms;
 int decode_video_count = 0;
 int decode_audio_count = 0;
 
@@ -85,46 +90,52 @@ static void convert_video_task(void *arg)
   while (xQueueReceive(video_queue_handle, &q1, portMAX_DELAY))
   {
     gfx->drawYCbCrBitmap(0, 0, y_buffer, cb_buffer, cr_buffer, disp_w, disp_h);
-    ++decode_video_count;
   }
 }
 
 // This function gets called for each decoded video frame
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
-  // Do something with frame->y.data, frame->cr.data, frame->cb.data
-  uint32_t *y_src = (uint32_t *)(frame->y.data + ys_offset);
-  uint32_t *y_src2 = y_src + (plm_w >> 2);
-  uint32_t *y_trgt = (uint32_t *)y_buffer;
-  uint32_t *y_trgt2 = y_trgt + (disp_w >> 2);
-  uint32_t *cb_src = (uint32_t *)(frame->cb.data + cbcrs_offset);
-  uint32_t *cb_trgt = (uint32_t *)cb_buffer;
-  uint32_t *cr_src = (uint32_t *)(frame->cr.data + cbcrs_offset);
-  uint32_t *cr_trgt = (uint32_t *)cr_buffer;
-
-  uint16_t w = disp_w >> 3;
-  uint16_t h = disp_h >> 1;
-  while (h--)
+  if (decode_video_count % 2)
   {
-    uint16_t i = w;
-    while (i--)
-    {
-      *y_trgt++ = *y_src++;
-      *y_trgt++ = *y_src++;
-      *y_trgt2++ = *y_src2++;
-      *y_trgt2++ = *y_src2++;
-      *cb_trgt++ = *cb_src++;
-      *cr_trgt++ = *cr_src++;
-    }
-    y_src += ys_skip;
-    y_src2 += ys_skip;
-    y_trgt += yt_skip;
-    y_trgt2 += yt_skip;
-    cb_src += cbcrs_skip;
-    cr_src += cbcrs_skip;
-  }
+    uint32_t *y_src = (uint32_t *)(frame->y.data + ys_offset);
+    uint32_t *y_src2 = y_src + (plm_w >> 2);
+    uint32_t *y_trgt = (uint32_t *)y_buffer;
+    uint32_t *y_trgt2 = y_trgt + (disp_w >> 2);
+    uint32_t *cb_src = (uint32_t *)(frame->cb.data + cbcrs_offset);
+    uint32_t *cb_trgt = (uint32_t *)cb_buffer;
+    uint32_t *cr_src = (uint32_t *)(frame->cr.data + cbcrs_offset);
+    uint32_t *cr_trgt = (uint32_t *)cr_buffer;
 
-  xQueueSend(video_queue_handle, &q, 0);
+    uint16_t w = disp_w >> 3;
+    uint16_t h = disp_h >> 1;
+    while (h--)
+    {
+      uint16_t i = w;
+      while (i--)
+      {
+        *y_trgt++ = *y_src++;
+        *y_trgt++ = *y_src++;
+        *y_trgt2++ = *y_src2++;
+        *y_trgt2++ = *y_src2++;
+        *cb_trgt++ = *cb_src++;
+        *cr_trgt++ = *cr_src++;
+      }
+      y_src += ys_skip;
+      y_src2 += ys_skip;
+      y_trgt += yt_skip;
+      y_trgt2 += yt_skip;
+      cb_src += cbcrs_skip;
+      cr_src += cbcrs_skip;
+    }
+
+    xQueueSend(video_queue_handle, &q, 0);
+  }
+  else
+  {
+    // Serial.printf("skip display frame #%d\n", decode_video_count);
+  }
+  ++decode_video_count;
 }
 
 // This function gets called for each decoded audio frame
@@ -137,8 +148,6 @@ void my_audio_callback(plm_t *plm, plm_samples_t *frame, void *user)
 
 void setup(void)
 {
-  WiFi.mode(WIFI_OFF);
-
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
   // while(!Serial);
@@ -242,18 +251,22 @@ void setup(void)
 void loop()
 {
   unsigned long start_ms = millis();
-  unsigned long next_frame_ms = start_ms;
-  unsigned long cur_ms;
+  next_frame_ms = start_ms;
   unsigned long remain_ms = 0;
   unsigned long total_remain_ms = 0;
   do
   {
     cur_ms = millis();
-    if (next_frame_ms > cur_ms)
+    if (next_frame_ms > (cur_ms + 200))
     {
       remain_ms = next_frame_ms - cur_ms;
-      delay(remain_ms >> 1);
-      total_remain_ms += remain_ms;
+      if (remain_ms > 200)
+      {
+        // Serial.printf("Remain %d ms\n", remain_ms);
+        remain_ms -= 200;
+        delay(remain_ms);
+        total_remain_ms += remain_ms;
+      }
     }
     else
     {
