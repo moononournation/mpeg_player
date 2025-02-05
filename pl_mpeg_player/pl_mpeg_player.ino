@@ -4,7 +4,6 @@
 // #pragma GCC optimize("O1")
 
 const char *root = "/root";
-// const char *mpeg_file = "/root/272x152.mpg";
 const char *mpeg_file = "/root/AVSEQ02.DAT";
 
 // Dev Device Pins: <https://github.com/moononournation/Dev_Device_Pins.git>
