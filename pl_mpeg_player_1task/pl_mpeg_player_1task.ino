@@ -5,7 +5,10 @@
 
 const char *root = "/root";
 const char *mpeg_file = "/root/AVSEQ02.DAT";
-// const char *mpeg_file = "/root/VCD.DAT";
+
+// Dev Device Pins: <https://github.com/moononournation/Dev_Device_Pins.git>
+#include "PINS_JC4827W543.h"
+// #include "PINS_JC1060P470.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -13,36 +16,11 @@ const char *mpeg_file = "/root/AVSEQ02.DAT";
 
 #include <FFat.h>
 #include <LittleFS.h>
-
-#include "TDECK_PINS.h"
-
-/*******************************************************************************
-   Start of Arduino_GFX setting
- ******************************************************************************/
-#include <Arduino_GFX_Library.h>
-#define GFX_DEV_DEVICE LILYGO_T_DECK
-#define GFX_EXTRA_PRE_INIT()                \
-  {                                         \
-    pinMode(TDECK_SDCARD_CS, OUTPUT);       \
-    digitalWrite(TDECK_SDCARD_CS, HIGH);    \
-    pinMode(TDECK_RADIO_CS, OUTPUT);        \
-    digitalWrite(TDECK_RADIO_CS, HIGH);     \
-    pinMode(TDECK_PERI_POWERON, OUTPUT);    \
-    digitalWrite(TDECK_PERI_POWERON, HIGH); \
-    delay(500);                             \
-  }
-#define GFX_BL TDECK_TFT_BACKLIGHT
-Arduino_DataBus *bus = new Arduino_ESP32SPIDMA(TDECK_TFT_DC, TDECK_TFT_CS, TDECK_SPI_SCK, TDECK_SPI_MOSI, GFX_NOT_DEFINED);
-Arduino_TFT *gfx = new Arduino_ST7789(bus, GFX_NOT_DEFINED /* RST */, 1 /* rotation */, true /* IPS */);
-/*******************************************************************************
-   End of Arduino_GFX setting
- ******************************************************************************/
+#include <SPIFFS.h>
+#include <SD.h>
+#include <SD_MMC.h>
 
 #include "esp32_audio.h"
-// I2S
-#define I2S_DOUT TDECK_I2S_DOUT
-#define I2S_BCLK TDECK_I2S_BCK
-#define I2S_LRCK TDECK_I2S_WS
 
 #define PL_MPEG_IMPLEMENTATION
 #include "pl_mpeg.h"
@@ -73,7 +51,10 @@ uint16_t frame_count;
 
 unsigned long next_frame_ms;
 unsigned long cur_ms;
+unsigned long remain_ms = 0;
+unsigned long total_remain_ms = 0;
 int decode_video_count = 0;
+int display_video_count = 0;
 int decode_audio_count = 0;
 
 typedef struct
@@ -90,14 +71,15 @@ static void convert_video_task(void *arg)
   while (xQueueReceive(video_queue_handle, &q1, portMAX_DELAY))
   {
     gfx->drawYCbCrBitmap(0, 0, y_buffer, cb_buffer, cr_buffer, disp_w, disp_h);
+    ++display_video_count;
   }
 }
 
 // This function gets called for each decoded video frame
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
-  if (decode_video_count % 2)
-  {
+  // if (cur_ms < next_frame_ms)
+  // {
     uint32_t *y_src = (uint32_t *)(frame->y.data + ys_offset);
     uint32_t *y_src2 = y_src + (plm_w >> 2);
     uint32_t *y_trgt = (uint32_t *)y_buffer;
@@ -130,11 +112,11 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
     }
 
     xQueueSend(video_queue_handle, &q, 0);
-  }
-  else
-  {
-    // Serial.printf("skip display frame #%d\n", decode_video_count);
-  }
+  // }
+  // else
+  // {
+  //   // Serial.printf("skip display frame #%d\n", decode_video_count);
+  // }
   ++decode_video_count;
 }
 
@@ -148,45 +130,73 @@ void my_audio_callback(plm_t *plm, plm_samples_t *frame, void *user)
 
 void setup(void)
 {
+#ifdef DEV_DEVICE_INIT
+  DEV_DEVICE_INIT();
+#endif
+
   Serial.begin(115200);
   // Serial.setDebugOutput(true);
   // while(!Serial);
   Serial.println("MPEG Player");
 
-#ifdef GFX_EXTRA_PRE_INIT
-  GFX_EXTRA_PRE_INIT();
+  // If display and SD shared same interface, init SPI first
+#ifdef SPI_SCK
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
 #endif
 
   // Init Display
-  if (!gfx->begin(80000000))
+  if (!gfx->begin(GFX_SPEED))
   {
     Serial.println("gfx->begin() failed!");
   }
   gfx->fillScreen(BLACK);
 
 #ifdef GFX_BL
-  pinMode(GFX_BL, OUTPUT);
-  digitalWrite(GFX_BL, HIGH);
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR < 3)
+  ledcSetup(0, 1000, 8);
+  ledcAttachPin(GFX_BL, 0);
+  ledcWrite(0, 204);
+#else  // ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcAttachChannel(GFX_BL, 1000, 8, 1);
+  ledcWrite(GFX_BL, 204);
+#endif // ESP_ARDUINO_VERSION_MAJOR >= 3
+#endif // GFX_BL
+
+#ifdef AUDIO_EXTRA_PRE_INIT
+  AUDIO_EXTRA_PRE_INIT();
 #endif
 
-  if (!FFat.begin(false, root))
-  // if (!LittleFS.begin(false, root))
+  i2s_init();
+
+#ifdef AUDIO_MUTE
+  pinMode(AUDIO_MUTE, OUTPUT);
+  digitalWrite(AUDIO_MUTE, HIGH);
+#endif
+
+#if defined(SD_D1)
+#define FILESYSTEM SD_MMC
+  SD_MMC.setPins(SD_SCK, SD_MOSI /* CMD */, SD_MISO /* D0 */, SD_D1, SD_D2, SD_CS /* D3 */);
+  if (!SD_MMC.begin(root, false /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_HIGHSPEED))
+#elif defined(SD_SCK)
+#define FILESYSTEM SD_MMC
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  SD_MMC.setPins(SD_SCK, SD_MOSI /* CMD */, SD_MISO /* D0 */);
+  if (!SD_MMC.begin(root, true /* mode1bit */, false /* format_if_mount_failed */, SDMMC_FREQ_HIGHSPEED))
+#elif defined(SD_CS)
+#define FILESYSTEM SD
+  if (!SD.begin(SD_CS, SPI, 80000000, "/root"))
+#else
+#define FILESYSTEM FFat
+  // if (!FFat.begin(false, root))
+  if (!LittleFS.begin(false, root))
+  // if (!SPIFFS.begin(false, root))
+#endif
   {
     Serial.println("ERROR: File system mount failed!");
   }
   else
   {
-    i2s_init(
-        I2S_NUM_0,
-        44100 /* sample_rate */,
-        -1 /* mck_io_num */, /*!< MCK in out pin. Note that ESP32 supports setting MCK on GPIO0/GPIO1/GPIO3 only*/
-        I2S_BCLK,            /*!< BCK in out pin*/
-        I2S_LRCK,            /*!< WS in out pin*/
-        I2S_DOUT,            /*!< DATA out pin*/
-        -1 /* data_in_num */ /*!< DATA in pin*/
-    );
-    i2s_zero_dma_buffer(I2S_NUM_0);
-
     plm = plm_create_with_filename(mpeg_file);
     if (!plm)
     {
@@ -200,6 +210,7 @@ void setup(void)
     plm_set_video_decode_callback(plm, my_video_callback, NULL);
     plm_set_audio_decode_callback(plm, my_audio_callback, NULL);
 
+    // plm_video_set_no_delay(plm->video_decoder, true);
     // plm_set_video_enabled(plm, false);
     // plm_set_audio_enabled(plm, false);
 
@@ -252,12 +263,10 @@ void loop()
 {
   unsigned long start_ms = millis();
   next_frame_ms = start_ms;
-  unsigned long remain_ms = 0;
-  unsigned long total_remain_ms = 0;
   do
   {
     cur_ms = millis();
-    if (next_frame_ms > (cur_ms + 200))
+    if (next_frame_ms > cur_ms)
     {
       remain_ms = next_frame_ms - cur_ms;
       if (remain_ms > 200)
@@ -278,7 +287,7 @@ void loop()
     next_frame_ms += frame_interval_ms;
   } while (!plm_has_ended(plm));
 
-  Serial.printf("Time used: %lu, decode_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, decode_audio_count, total_remain_ms);
+  Serial.printf("Time used: %lu, decode_video_count: %d, display_video_count: %d, decode_audio_count: %d, remain: %lu\n", millis() - start_ms, decode_video_count, display_video_count, decode_audio_count, total_remain_ms);
 
   vQueueDelete(video_queue_handle);
 
