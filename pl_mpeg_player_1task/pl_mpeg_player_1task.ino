@@ -7,8 +7,8 @@ const char *root = "/root";
 const char *mpeg_file = "/root/AVSEQ02.DAT";
 
 // Dev Device Pins: <https://github.com/moononournation/Dev_Device_Pins.git>
-#include "PINS_JC4827W543.h"
-// #include "PINS_JC1060P470.h"
+// #include "PINS_JC4827W543.h"
+#include "PINS_JC1060P470.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -79,7 +79,8 @@ static void convert_video_task(void *arg)
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
   // if (cur_ms < next_frame_ms)
-  // {
+  // if (decode_video_count % 2)
+  {
     uint32_t *y_src = (uint32_t *)(frame->y.data + ys_offset);
     uint32_t *y_src2 = y_src + (plm_w >> 2);
     uint32_t *y_trgt = (uint32_t *)y_buffer;
@@ -112,10 +113,10 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
     }
 
     xQueueSend(video_queue_handle, &q, 0);
-  // }
+  }
   // else
   // {
-  //   // Serial.printf("skip display frame #%d\n", decode_video_count);
+  //   Serial.printf("skip display frame #%d\n", decode_video_count);
   // }
   ++decode_video_count;
 }
@@ -220,6 +221,7 @@ void setup(void)
     plm_h = plm_get_height(plm);
     disp_w = gfx->width();
     disp_h = gfx->height();
+    // Serial.printf("plm_w: %d, plm_h: %d, disp_w: %d, disp_h: %d\n", plm_w, plm_h, disp_w, disp_h);
     if (disp_w < plm_w)
     {
       x_skip = plm_w - disp_w;

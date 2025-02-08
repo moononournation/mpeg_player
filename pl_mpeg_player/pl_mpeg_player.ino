@@ -72,7 +72,7 @@ void YCbCr2RGB565Be(uint8_t *yData, uint8_t *cbData, uint8_t *crData, uint16_t w
 // This function gets called for each decoded video frame
 void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
 {
-  if (cur_ms < next_frame_ms)
+  // if (cur_ms < next_frame_ms)
   // if (decode_video_count % 2)
   {
     YCbCr2RGB565Be(frame->y.data, frame->cb.data, frame->cr.data, frame->width, frame->height, plm_buffer);
@@ -83,10 +83,10 @@ void my_video_callback(plm_t *plm, plm_frame_t *frame, void *user)
     gfx->draw16bitBeRGBBitmap(0, 0, plm_buffer, plm_w, plm_h);
     ++display_video_count;
   }
-  else
-  {
-    // Serial.printf("skip display frame #%d\n", decode_video_count);
-  }
+  // else
+  // {
+  //   Serial.printf("skip display frame #%d\n", decode_video_count);
+  // }
   ++decode_video_count;
 }
 
